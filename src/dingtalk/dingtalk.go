@@ -17,20 +17,29 @@ import (
 	"sync"
 )
 
+type SliceItem struct {
+	Url  string
+	Name string
+}
+
 const sourceDir string = "data"
 
 var prefix string
 var wg sync.WaitGroup
+var taskChan chan SliceItem
+var _endSigal chan int
 
 func init() {
 	prefix = "https://dtliving-bj.dingtalk.com/live_hp/"
+	taskChan = make(chan SliceItem, 10)
+	_endSigal = make(chan int)
 }
 
 func downloadSliceItem(url string, name string) {
 	defer wg.Done()
 	fileTitle := strings.Split(strings.Split(name, "/")[1], "?")[0]
 	folder := ""
-	fmt.Println("start download folder:", folder)
+	fmt.Println("start download folder:", fileTitle)
 	err := os.MkdirAll(sourceDir+"/"+folder, 0777)
 	if err != nil {
 		log.Fatalln(err)
@@ -64,7 +73,12 @@ func fixSliceUrl(path string) {
 	slicePath := prefix + path
 	fmt.Printf("slice url:%v\n", slicePath)
 	wg.Add(1)
-	go downloadSliceItem(slicePath, path)
+	task := SliceItem{
+		Url:  slicePath,
+		Name: path,
+	}
+	taskChan <- task
+	//downloadSliceItem(slicePath, path)
 }
 
 func readFileContent(filePath string) {
@@ -93,6 +107,7 @@ func readFileContent(filePath string) {
 			fixSliceUrl(line)
 		}
 	}
+	_endSigal <- 1
 }
 
 func mergeTs() {
@@ -109,8 +124,6 @@ func mergeTs() {
 	segements := make([]int, 0)
 	_segements := make([]string, 0)
 	for _, item := range __dir {
-		//fmt.Printf("key:%v \n value: %v\n", key, item)
-		//fmt.Printf("name: %v\n", item.Name())
 		index, _ := strconv.Atoi(strings.Split(item.Name(), ".")[0])
 		segements = append(segements, index)
 	}
@@ -120,7 +133,6 @@ func mergeTs() {
 		_segements = append(_segements, sourceDir+"/"+_value+".ts")
 	}
 	_result := strings.Join(_segements, "|")
-	//fmt.Printf("result: %v\n", _result)
 	toMp4(_result, "out")
 }
 
@@ -143,11 +155,25 @@ func toMp4(src string, out string) {
 	}
 
 	cmd := exec.Command(binary, args...)
-	r, err := cmd.Output()
+	_, err = cmd.Output()
 	if err != nil {
 		log.Fatalln(err)
 	}
-	fmt.Println("result r-->", string(r))
+	fmt.Printf("result video:%v.mp4", out)
+}
+
+func downloadReal() {
+	for {
+		select {
+		case task := <-taskChan:
+			downloadSliceItem(task.Url, task.Name)
+		case _end := <-_endSigal:
+			fmt.Printf("all task put in:%v\n", _end)
+			break
+			// case <-time.After(time.Second * 10):
+			// 	break
+		}
+	}
 }
 
 func DownloadM3u8File() {
@@ -155,8 +181,11 @@ func DownloadM3u8File() {
 	fmt.Println("start download m3u8 file")
 	os.RemoveAll(sourceDir)
 	os.Mkdir(sourceDir, 0777)
+	go downloadReal()
 	readFileContent("source.m3u8")
 
 	wg.Wait()
+
 	mergeTs()
+
 }
