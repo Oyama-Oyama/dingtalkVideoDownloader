@@ -167,13 +167,15 @@ func downloadReal() {
 		select {
 		case task := <-taskChan:
 			downloadSliceItem(task.Url, task.Name)
-		case _end := <-_endSigal:
-			fmt.Printf("all task put in:%v\n", _end)
-			break
+		case <-_endSigal:
+			fmt.Println("all task put in")
+			goto END
 			// case <-time.After(time.Second * 10):
 			// 	break
 		}
 	}
+END:
+	fmt.Println("stop task loop")
 }
 
 func DownloadM3u8File() {
@@ -181,6 +183,7 @@ func DownloadM3u8File() {
 	fmt.Println("start download m3u8 file")
 	os.RemoveAll(sourceDir)
 	os.Mkdir(sourceDir, 0777)
+	os.Remove("out.mp4")
 	go downloadReal()
 	readFileContent("source.m3u8")
 
