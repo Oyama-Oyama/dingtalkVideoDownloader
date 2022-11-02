@@ -159,7 +159,7 @@ func toMp4(src string, out string) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	fmt.Printf("result video:%v.mp4", out)
+	fmt.Printf("result video:%v.mp4\n", out)
 }
 
 func downloadReal() {
