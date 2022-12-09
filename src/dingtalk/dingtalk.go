@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type SliceItem struct {
@@ -27,19 +28,18 @@ const sourceDir string = "data"
 var prefix string
 var wg sync.WaitGroup
 var taskChan chan SliceItem
-var _endSigal chan int
 
 func init() {
-	prefix = "https://dtliving-bj.dingtalk.com/live_hp/"
-	taskChan = make(chan SliceItem, 10)
-	_endSigal = make(chan int)
+	prefix = "https://dtliving-sh.dingtalk.com/live_hp/" //"https://dtliving-bj.dingtalk.com/live_hp/"
+	fmt.Printf("cpu count: %v \n", runtime.NumCPU())
+	taskChan = make(chan SliceItem, runtime.NumCPU())
 }
 
 func downloadSliceItem(url string, name string) {
 	defer wg.Done()
 	fileTitle := strings.Split(strings.Split(name, "/")[1], "?")[0]
 	folder := ""
-	fmt.Println("start download folder:", fileTitle)
+	fmt.Println("start download file:", fileTitle)
 	err := os.MkdirAll(sourceDir+"/"+folder, 0777)
 	if err != nil {
 		log.Fatalln(err)
@@ -53,19 +53,23 @@ func downloadSliceItem(url string, name string) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	content := string(bytes)
-	file, err := os.Create(sourceDir + "/" + folder + "/" + fileTitle)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer file.Close()
-	writer := bufio.NewWriter(file)
+	path := sourceDir + "/" + folder + "/" + fileTitle
+	// file, err := os.Create(sourceDir + "/" + folder + "/" + fileTitle)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+	// defer file.Close()
+	err = ioutil.WriteFile(path, bytes, 0777)
 
-	length, err := writer.WriteString(content)
+	// content := string(bytes)
+
+	// writer := bufio.NewWriter(file)
+
+	// length, err := writer.WriteString(content)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	fmt.Printf("%s, %d writed\n", fileTitle, length)
+	fmt.Printf("%s, %d writed\n", fileTitle, len(bytes))
 }
 
 func fixSliceUrl(path string) {
@@ -107,7 +111,6 @@ func readFileContent(filePath string) {
 			fixSliceUrl(line)
 		}
 	}
-	_endSigal <- 1
 }
 
 func mergeTs() {
@@ -167,11 +170,9 @@ func downloadReal() {
 		select {
 		case task := <-taskChan:
 			downloadSliceItem(task.Url, task.Name)
-		case <-_endSigal:
+		case <-time.After(time.Second * 5):
 			fmt.Println("all task put in")
 			goto END
-			// case <-time.After(time.Second * 10):
-			// 	break
 		}
 	}
 END:
