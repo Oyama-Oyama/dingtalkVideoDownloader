@@ -28,16 +28,27 @@ const sourceDir string = "data"
 var prefix string
 var wg sync.WaitGroup
 var taskChan chan SliceItem
-
+var PwdKey []byte
 func init() {
-	prefix = "https://dtliving-sh.dingtalk.com/live_hp/" //"https://dtliving-bj.dingtalk.com/live_hp/"
+	PwdKey = []byte("ABCDABCDABCDABCD")
+	//https://streamddo.yxt.com/orgs/dingf731889e7115715535c2f4657eb6378f/knowledge/video/202211/1bc9416915914d8c96e08d5502c3222c_1442042431_480p_enc.m3u8.0.ts
+	//https://drm.media.baidubce.com/v1/tokenVideoKey?videoKeyId=job-nkukpfwy39ys5fay&playerId=pid-1-5-1&token=97cfb1a7d0265c9b869a38b53eb67e2f92954f81613d3b87ed4f388131efba07_7d2195c92f8842a586f4299a8244b1fa_1672056495
+	prefix = "https://streamddo.yxt.com/orgs/dingf731889e7115715535c2f4657eb6378f/knowledge/video/202211/" // "https://dtliving-sh.dingtalk.com/live_hp/" //"https://dtliving-bj.dingtalk.com/live_hp/"
 	fmt.Printf("cpu count: %v \n", runtime.NumCPU())
 	taskChan = make(chan SliceItem, runtime.NumCPU())
 }
 
 func downloadSliceItem(url string, name string) {
+	fmt.Printf("url:%v \n name: %v \n", url, name)
 	defer wg.Done()
-	fileTitle := strings.Split(strings.Split(name, "/")[1], "?")[0]
+	var fileTitle string
+
+	if strings.Contains(name, "?") {
+		fileTitle = strings.Split(strings.Split(name, "/")[1], "?")[0]
+	} else {
+		fileTitle = name
+	}
+
 	folder := ""
 	fmt.Println("start download file:", fileTitle)
 	err := os.MkdirAll(sourceDir+"/"+folder, 0777)
@@ -135,6 +146,7 @@ func mergeTs() {
 		_value := strconv.Itoa(value)
 		_segements = append(_segements, sourceDir+"/"+_value+".ts")
 	}
+
 	_result := strings.Join(_segements, "|")
 	toMp4(_result, "out")
 }
@@ -144,7 +156,6 @@ func toMp4(src string, out string) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
 	args := []string{
 		"-i",
 		fmt.Sprintf("concat:%s", src),

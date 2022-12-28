@@ -1,12 +1,14 @@
 package main
 
 import (
-	"fmt"
+	"dingtalk/dingtalk"
 
-	"m3u8_download.com/dingtalk"
+	"fmt"
 )
 
 func main() {
-	fmt.Println("输")
-	dingtalk.DownloadM3u8File()
+	fmt.Println("main000")
+	dingtalk.Download()
+
+	fmt.Println("main11111")
 }

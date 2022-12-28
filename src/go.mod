@@ -1,3 +1,3 @@
-module m3u8_download.com
+module dingtalk
 
 go 1.18
